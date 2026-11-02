@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu-reference:
+    name: CPU reference tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DWITH_CUDA=OFF && cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure
+
+  cuda-build:
+    name: Compile CUDA kernels (no GPU on hosted runners, so build only)
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:12.6.3-devel-ubuntu24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y --no-install-recommends cmake make g++
+      - run: cmake -S . -B build -DCMAKE_CUDA_ARCHITECTURES="75;80;86" && cmake --build build -j
+      - name: Report register use and spills per kernel
+        run: |
+          nvcc -std=c++17 -O3 -Iinclude -arch=sm_75 -Xptxas -v -c src/gemm.cu -o /dev/null 2>&1 | grep -E "Compiling|registers|spill"
+          nvcc -std=c++17 -O3 -Iinclude -arch=sm_75 -Xptxas -v -c src/conv.cu -o /dev/null 2>&1 | grep -E "Compiling|registers|spill"
