@@ -1,0 +1,6 @@
+build/
+*.o
+*.ptx
+*.cubin
+.ipynb_checkpoints/
+.DS_Store
